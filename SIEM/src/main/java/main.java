@@ -52,7 +52,6 @@ public class main {
             //Passing next object to runtime
             runtime.getEventService().sendEventBean(new SSHFailedLogMessage(MESSAGE, SYSLOG_TIMESTAMP), "SSHFailedLogMessage");
         });
-
         /*--------------------------------------------------------------------------------------------------------------------------------------*/
 
         EPCompiled epCompiled2;
@@ -100,11 +99,11 @@ public class main {
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             ArrayList<String> json = readFromBuffer(reader);
 
-            String line;
+            String JSON;
             for (int i = 0; i < json.size(); i++) {
-                line = json.get(i);
-                SSHLogMessage mess = new SSHLogMessage(line);
-                SSHLogMessageRuntime.getEventService().sendEventBean(mess, "SSHLogMessage");
+                JSON = json.get(i);
+                SSHLogMessage sshLogMessage = new SSHLogMessage(JSON);
+                SSHLogMessageRuntime.getEventService().sendEventBean(sshLogMessage, "SSHLogMessage");
             }
             break;
         }
