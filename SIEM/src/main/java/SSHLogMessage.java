@@ -6,9 +6,9 @@ public class SSHLogMessage {
     String TRANSPORT;
     String SYSLOG_TIMESTAMP;
     String MESSAGE;
-    public SSHLogMessage(String json) throws JsonProcessingException{
+    public SSHLogMessage(String JSON) throws JsonProcessingException{
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = objectMapper.readTree(json);
+        JsonNode jsonNode = objectMapper.readTree(JSON);
         this.TRANSPORT = jsonNode.get("_TRANSPORT").asText();
         if (!TRANSPORT.contains("journal")) {
             this.SYSLOG_TIMESTAMP = jsonNode.get("SYSLOG_TIMESTAMP").asText();

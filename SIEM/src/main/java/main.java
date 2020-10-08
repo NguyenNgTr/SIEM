@@ -15,27 +15,26 @@ import java.util.ArrayList;
 
 public class main {
     public static EPRuntime initSSHLogMessageRuntime() {
-        //Create new compiler
+        // Create new compiler
         EPCompiler epCompiler = EPCompilerProvider.getCompiler();
         //Create new configuration
         Configuration configuration = new Configuration();
-        //Add event into configuration
+        // Add event into configuration
         configuration.getCommon().addEventType(SSHFailedLogMessage.class);
         configuration.getCommon().addEventType(SSHLogMessage.class);
-        //Passing configuration to runtime
+        // Passing configuration to runtime
         EPRuntime runtime = EPRuntimeProvider.getDefaultRuntime(configuration);
-        //Create EPL statement
+        // Create EPL statement
         CompilerArguments args = new CompilerArguments(configuration);
         EPCompiled epCompiled;
         try {
-            epCompiled = epCompiler.compile("@name('SSHLogMessage') SELECT * FROM SSHLogMessage AS mes " +
-                    "WHERE mes.MESSAGE LIKE \'%Failed password%\'", args);
+            epCompiled = epCompiler.compile("@name('SSHLogMessage') SELECT * FROM SSHLogMessage WHERE MESSAGE LIKE \'%Failed password%\'", args);
         }
         catch (EPCompileException ex) {
             // handle exception here
             throw new RuntimeException(ex);
         }
-        //Deploy EPL Compiled Module
+        // Deploy EPL Compiled Module
         EPDeployment deployment;
         try {
             deployment = runtime.getDeploymentService().deploy(epCompiled);
@@ -44,7 +43,7 @@ public class main {
             // handle exception here
             throw new RuntimeException(ex);
         }
-        //Attach callback to listener
+        // Attach callback to listener
         EPStatement statement = runtime.getDeploymentService().getStatement(deployment.getDeploymentId(), "SSHLogMessage");
         statement.addListener( (newData, oldData, statement1, runtime1) -> {
             String MESSAGE = (String) newData[0].get("MESSAGE");
@@ -94,16 +93,15 @@ public class main {
 
     public static void main(String[] args) throws IOException{
         EPRuntime SSHLogMessageRuntime = initSSHLogMessageRuntime();
-        int lines = 0;
         while (true) {
             ProcessBuilder builder = new ProcessBuilder("bash", "-c", "journalctl -u ssh.service -o json");
-            builder.redirectErrorStream(true);
             Process process = builder.start();
             InputStream is = process.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            ArrayList<String> json = json(reader);
-            String line = null;
-            for (int i = lines; i < json.size(); i++) {
+            ArrayList<String> json = readFromBuffer(reader);
+
+            String line;
+            for (int i = 0; i < json.size(); i++) {
                 line = json.get(i);
                 SSHLogMessage mess = new SSHLogMessage(line);
                 SSHLogMessageRuntime.getEventService().sendEventBean(mess, "SSHLogMessage");
@@ -112,10 +110,15 @@ public class main {
         }
     }
 
-    public static ArrayList<String> json(BufferedReader br) throws IOException {
-        String line = null;
+    public static ArrayList<String> readFromBuffer(BufferedReader bufferedReader) throws IOException {
+        String line;
         ArrayList<String> result = new ArrayList<>();
-        while ((line = br.readLine()) != null) result.add(line);
+        while ((line = bufferedReader.readLine()) != null)
+            try{
+                result.add(line);
+            } catch (Exception e){
+                System.out.println(e);
+            }
         return result;
     }
 }

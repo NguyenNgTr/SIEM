@@ -6,11 +6,10 @@ public class SSHFailedLogMessage {
     public SSHFailedLogMessage(String MESSAGE, String SYSLOG_TIMESTAMP){
         this.MESSAGE = MESSAGE;
         this.SYSLOG_TIMESTAMP = SYSLOG_TIMESTAMP;
-        String[] splitMess = this.MESSAGE.split(" ");
-        for (int i = 0; i < splitMess.length; i++){
-            if (splitMess[i].equals("from")){
-                this.IP = splitMess[i+1];
-                break;
+        String[] a = this.MESSAGE.split(" ");
+        for (int i = 0; i < a.length; i++){
+            if (a[i].equals("from")){
+                this.IP = a[i+1];
             }
         }
     }
