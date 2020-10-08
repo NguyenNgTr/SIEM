@@ -1,17 +1,21 @@
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
+
 public class SSHFailedLogMessage {
+    String COMM;
     String SYSLOG_TIMESTAMP;
     String MESSAGE;
-    String IP;
-
-    public SSHFailedLogMessage(String MESSAGE, String SYSLOG_TIMESTAMP){
-        this.MESSAGE = MESSAGE;
-        this.SYSLOG_TIMESTAMP = SYSLOG_TIMESTAMP;
-        String[] a = this.MESSAGE.split(" ");
-        for (int i = 0; i < a.length; i++){
-            if (a[i].equals("from")){
-                this.IP = a[i+1];
-            }
-        }
+    public SSHFailedLogMessage(String MESSAGE, String SYSLOG_TIMESTAMP) {
+            this.SYSLOG_TIMESTAMP = SYSLOG_TIMESTAMP;
+            this.MESSAGE = MESSAGE;
     }
 
     public String getSYSLOG_TIMESTAMP(){
@@ -22,7 +26,4 @@ public class SSHFailedLogMessage {
         return MESSAGE;
     }
 
-    public String getIP(){
-        return IP;
-    }
 }

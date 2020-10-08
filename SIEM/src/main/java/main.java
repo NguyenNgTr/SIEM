@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.ParseException;
 import java.util.ArrayList;
 
 public class main {
@@ -20,44 +21,72 @@ public class main {
         //Create new configuration
         Configuration configuration = new Configuration();
         // Add event into configuration
-        configuration.getCommon().addEventType(SSHFailedLogMessage.class);
+        configuration.getCommon().addEventType(SSHAlert.class);
         configuration.getCommon().addEventType(SSHLogMessage.class);
+        configuration.getCommon().addEventType(SSHFailedLogMessage.class);
         // Passing configuration to runtime
         EPRuntime runtime = EPRuntimeProvider.getDefaultRuntime(configuration);
         // Create EPL statement
         CompilerArguments args = new CompilerArguments(configuration);
-        EPCompiled epCompiled;
+        EPCompiled epCompiled1;
+
         try {
-            epCompiled = epCompiler.compile("@name('SSHLogMessage') SELECT * FROM SSHLogMessage WHERE MESSAGE LIKE \'%Failed password%\'", args);
+            epCompiled1 = epCompiler.compile("@name('SSHLogMessage') SELECT * FROM SSHLogMessage", args);
         }
         catch (EPCompileException ex) {
             // handle exception here
             throw new RuntimeException(ex);
         }
         // Deploy EPL Compiled Module
-        EPDeployment deployment;
+        EPDeployment deployment1;
         try {
-            deployment = runtime.getDeploymentService().deploy(epCompiled);
+            deployment1 = runtime.getDeploymentService().deploy(epCompiled1);
         }
         catch (EPDeployException ex) {
             // handle exception here
             throw new RuntimeException(ex);
         }
         // Attach callback to listener
-        EPStatement statement = runtime.getDeploymentService().getStatement(deployment.getDeploymentId(), "SSHLogMessage");
+        EPStatement statement = runtime.getDeploymentService().getStatement(deployment1.getDeploymentId(), "SSHLogMessage");
         statement.addListener( (newData, oldData, statement1, runtime1) -> {
+            String MESSAGE = (String) newData[0].get("MESSAGE");
+            String SYSLOG_TIMESTAMP = (String) newData[0].get("SYSLOG_TIMESTAMP");
+            //Passing next object to runtime
+            runtime.getEventService().sendEventBean(new SSHFailedLogMessage(MESSAGE,SYSLOG_TIMESTAMP), "SSHFailedLogMessage");
+        });
+        /*--------------------------------------------------------------------------------------------------------------------------------------*/
+        EPCompiled epCompiled2;
+        try {
+            epCompiled2 = epCompiler.compile("@name('SSHFailedLogMessage') SELECT * FROM SSHFailedLogMessage WHERE MESSAGE LIKE \'%Failed password%\'", args);
+        }
+        catch (EPCompileException ex) {
+            // handle exception here
+            throw new RuntimeException(ex);
+        }
+        // Deploy EPL Compiled Module
+        EPDeployment deployment2;
+        try {
+            deployment2 = runtime.getDeploymentService().deploy(epCompiled2);
+        }
+        catch (EPDeployException ex) {
+            // handle exception here
+            throw new RuntimeException(ex);
+        }
+        // Attach callback to listener
+        EPStatement statement2 = runtime.getDeploymentService().getStatement(deployment2.getDeploymentId(), "SSHFailedLogMessage");
+        statement2.addListener( (newData, oldData, statement1, runtime1) -> {
             String MESSAGE = (String) newData[0].get("MESSAGE");
             String SYSLOG_TIMESTAMP = (String) newData[0].get("SYSLOG_TIMESTAMP");
             System.out.println(String.format(MESSAGE + " at " + SYSLOG_TIMESTAMP));
             //Passing next object to runtime
-            runtime.getEventService().sendEventBean(new SSHFailedLogMessage(MESSAGE, SYSLOG_TIMESTAMP), "SSHFailedLogMessage");
+            runtime.getEventService().sendEventBean(new SSHAlert(MESSAGE, SYSLOG_TIMESTAMP), "SSHAlert");
         });
         /*--------------------------------------------------------------------------------------------------------------------------------------*/
 
-        EPCompiled epCompiled2;
+        EPCompiled epCompiled3;
         try {
-            epCompiled2 = epCompiler.compile("@name('SSHFailedLogMessage') SELECT * FROM SSHFailedLogMessage " +
-                    " match_recognize (" +
+            epCompiled3 = epCompiler.compile("@name('SSHAlert') SELECT * FROM SSHAlert " +
+                    " MATCH_RECOGNIZE (" +
                     "   MEASURES A as A, B as B, C as C" +
                     "   PATTERN (A B C)" +
                     "   DEFINE " +
@@ -70,17 +99,17 @@ public class main {
             throw new RuntimeException(ex);
         }
 
-        EPDeployment deployment2;
+        EPDeployment deployment3;
         try {
-            deployment2 = runtime.getDeploymentService().deploy(epCompiled2);
+            deployment3 = runtime.getDeploymentService().deploy(epCompiled3);
         }
         catch (EPDeployException ex) {
             // handle exception here
             throw new RuntimeException(ex);
         }
 
-        EPStatement statement2 = runtime.getDeploymentService().getStatement(deployment2.getDeploymentId(), "SSHFailedLogMessage");
-        statement2.addListener( (newData, oldData, statement1, runtime1) -> {
+        EPStatement statement3 = runtime.getDeploymentService().getStatement(deployment3.getDeploymentId(), "SSHAlert");
+        statement3.addListener( (newData, oldData, statement1, runtime1) -> {
             String IP = (String) newData[0].get("C.IP");
             String SYSLOG_TIMESTAMP = (String) newData[0].get("C.SYSLOG_TIMESTAMP");
             System.out.println("------------------------------------------------------------------------------");
@@ -90,9 +119,8 @@ public class main {
         return runtime;
     }
 
-    public static void main(String[] args) throws IOException{
+    public static void main(String[] args) throws IOException, ParseException {
         EPRuntime SSHLogMessageRuntime = initSSHLogMessageRuntime();
-        while (true) {
             ProcessBuilder builder = new ProcessBuilder("bash", "-c", "journalctl -u ssh.service -o json");
             Process process = builder.start();
             InputStream is = process.getInputStream();
@@ -105,9 +133,7 @@ public class main {
                 SSHLogMessage sshLogMessage = new SSHLogMessage(JSON);
                 SSHLogMessageRuntime.getEventService().sendEventBean(sshLogMessage, "SSHLogMessage");
             }
-            break;
         }
-    }
 
     public static ArrayList<String> readFromBuffer(BufferedReader bufferedReader) throws IOException {
         String line;
